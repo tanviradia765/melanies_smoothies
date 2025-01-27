@@ -24,6 +24,10 @@ pd_df = my_dataframe.to_pandas()
 # st.dataframe(pd_df)
 # st.stop()
 
+# Streamlit text input for the user's name on the order
+name_on_order = st.text_input("Enter your name for the order:")
+st.write("The name on your Smoothie will be ", name_on_order)
+
 # Streamlit multiselect for up to 5 ingredients
 ingredients_list = st.multiselect(
     'Choose up to 5 ingredients:'
