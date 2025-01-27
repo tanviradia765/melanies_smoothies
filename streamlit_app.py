@@ -1,84 +1,71 @@
-# Import python packages
+# Import required packages
 import streamlit as st
 from snowflake.snowpark.functions import col
 import requests
+import hashlib
 
-# Write directly to the app
+# Title and Description
 st.title(":cup_with_straw: Customize Your Smoothie :cup_with_straw:")
-st.write(
-    """Choose the fruits you want in your custom Smoothie!
-    """
-)
-# session = get_active_session()
+st.write("Choose the fruits you want in your custom Smoothie!")
 
+# Snowflake Connection
 cnx = st.connection("snowflake")
 session = cnx.session()
 
-# my_dataframe = session.table("smoothies.public.fruit_options").select(col('FRUIT_NAME')).collect()
-my_dataframe = session.table("smoothies.public.fruit_options").select(col('FRUIT_NAME'), col('SEARCH_ON'))
-st.dataframe(data=my_dataframe, use_container_width=True)
-# st.stop()
+# Step 1: Fetch Fruit Options from Snowflake
+try:
+    fruit_df = session.table("smoothies.public.fruit_options").select(col("FRUIT_NAME"), col("SEARCH_ON"))
+    fruit_pd_df = fruit_df.to_pandas()  # Convert Snowpark DataFrame to Pandas
+    st.dataframe(data=fruit_pd_df, use_container_width=True)
+except Exception as e:
+    st.error("Failed to fetch fruit options from Snowflake.")
+    st.exception(e)
+    st.stop()
 
-# Convert the snowpark dataframe to pandas dataframe so we can use LOC function
-pd_df = my_dataframe.to_pandas()
-# st.dataframe(pd_df)
-# st.stop()
+# Step 2: Multiselect for Ingredient Selection
+try:
+    fruit_names = fruit_pd_df["FRUIT_NAME"].tolist()  # Extract fruit names
+    selected_ingredients = st.multiselect("Choose up to 5 ingredients:", fruit_names, max_selections=5)
+except Exception as e:
+    st.error("Error while rendering the ingredient selection.")
+    st.exception(e)
+    st.stop()
 
-# Streamlit text input for the user's name on the order
+# Step 3: Order Form (Name + Ingredients)
 name_on_order = st.text_input("Enter your name for the order:")
-st.write("The name on your Smoothie will be ", name_on_order)
+if selected_ingredients and name_on_order:
+    # Hash the selected ingredients
+    ingredients_string = " ".join(selected_ingredients)
+    ingredients_hash = hashlib.sha256(ingredients_string.encode("utf-8")).hexdigest()
+    
+    st.write("Selected Ingredients:", selected_ingredients)
+    st.write("Ingredients Hash:", ingredients_hash)
 
-# Streamlit multiselect for up to 5 ingredients
-ingredients_list = st.multiselect(
-    'Choose up to 5 ingredients:'
-    , my_dataframe
-    , max_selections=5
-)
+    # Step 4: Insert Order into Snowflake
+    if st.button("Submit Order"):
+        try:
+            insert_query = f"""
+                INSERT INTO smoothies.public.orders (ingredients, name_on_order, order_filled, hash_ing, order_ts)
+                VALUES ('{ingredients_string}', '{name_on_order}', FALSE, {int(ingredients_hash, 16)}, CURRENT_TIMESTAMP)
+            """
+            session.sql(insert_query).collect()
+            st.success(f"Order placed successfully for {name_on_order}!")
+        except Exception as e:
+            st.error("Failed to insert the order into the database.")
+            st.exception(e)
 
-# # Convert the Snowflake DataFrame to a list of fruit names
-# fruit_names = [row['FRUIT_NAME'] for row in my_dataframe]
-
-# # Streamlit text input for the user's name on the order
-# name_on_order = st.text_input("Enter your name for the order:")
-# st.write("The name on your Smoothie will be ", name_on_order)
-
-# # # Streamlit multiselect for up to 5 ingredients
-# # ingredients_list = st.multiselect(
-# #     'Choose up to 5 ingredients:',
-# #     fruit_names
-# # )
-
-# if ingredients_list and name_on_order:
-#     # Create a single string of selected ingredients
-#     ingredients_string = ' '.join(ingredients_list)
-
-#     # Button for submitting the order
-#     time_to_insert = st.button('Submit Order', key="submit_order_button")
-
-#     if time_to_insert:
-#         # Insert the order into the database
-#         my_insert_stmt = f"""
-#         INSERT INTO smoothies.public.orders (ingredients, name_on_order)
-#         VALUES ('{ingredients_string}', '{name_on_order}')
-#         """
-#         session.sql(my_insert_stmt).collect()
-#         # st.success(f"Thank you {name_on_order}, your smoothie order has been placed!", icon="✅")
-#         st.success(f"Your Smoothie is ordered, {name_on_order}", icon="✅")
-
-# New section to display smoothiefroot nutrition information
-if ingredients_list:
-    ingredients_string = ''
-
-    for fruit_chosen in ingredients_list:
-        ingredients_string += fruit_chosen + ' '
-
-        search_on = pd_df.loc[pd_df['FRUIT_NAME'] == fruit_chosen, 'SEARCH_ON'].iloc[0]
-        # st.write('The search value for ', fruit_chosen,' is ', search_on, '.')
-
-        st.subheader(fruit_chosen + ' Nutrition Information')
-        fruityvice_response = requests.get("https://fruityvice.com/api/fruit/" + search_on)
-
-        # smoothiefroot_response = requests.get("https://my.smoothiefroot.com/api/fruit/" + fruit_chosen)
-        # st.text(smoothiefroot_response.json())
-        fv_df = st.dataframe(data=fruityvice_response.json(), use_container_width=True)
-    # st.write(ingredients_string)
+# Step 5: Nutrition Information (Optional)
+if selected_ingredients:
+    for fruit in selected_ingredients:
+        try:
+            search_on = fruit_pd_df.loc[fruit_pd_df['FRUIT_NAME'] == fruit, 'SEARCH_ON'].iloc[0]
+            response = requests.get(f"https://fruityvice.com/api/fruit/{search_on}")
+            
+            if response.status_code == 200:
+                st.subheader(f"{fruit} Nutrition Information")
+                st.json(response.json())
+            else:
+                st.warning(f"Could not fetch nutrition information for {fruit}.")
+        except Exception as e:
+            st.error(f"Error fetching nutrition data for {fruit}.")
+            st.exception(e)
