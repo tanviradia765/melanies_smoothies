@@ -16,45 +16,54 @@ session = cnx.session()
 
 # Step 1: Fetch data from the Snowflake table
 try:
-    st.write("Fetching data from the Snowflake table...")
     # Selecting columns from the Snowflake table
-    snowpark_df = session.table("smoothies.public.fruit_options").select(col('FRUIT_NAME'), col('SEARCH_ON'))
-    st.write("Data fetched successfully!")
-
-    # Step 2: Convert Snowpark DataFrame to Pandas DataFrame
-    st.write("Converting Snowpark DataFrame to Pandas DataFrame...")
-    pd_df = snowpark_df.to_pandas()
-    st.write("Conversion successful!")
+    my_dataframe = session.table("smoothies.public.fruit_options").select(col('FRUIT_NAME'), col('SEARCH_ON'))
+    
+    # Convert Snowflake DataFrame to Pandas DataFrame
+    pd_df = my_dataframe.to_pandas()
+    
+    # Display the fetched data in Streamlit
     st.dataframe(data=pd_df, use_container_width=True)
 
 except Exception as e:
-    st.error("An error occurred while fetching or converting data from Snowflake.")
+    st.error("An error occurred while fetching data from Snowflake.")
     st.exception(e)
     st.stop()
 
-# Step 3: Allow user to select ingredients
+# Step 2: Streamlit multiselect for up to 5 ingredients
 try:
+    # Display fruit options for user selection
     ingredients_list = st.multiselect(
         'Choose up to 5 ingredients:',
-        pd_df['FRUIT_NAME'].tolist(),  # Convert column to list for Streamlit multiselect
+        pd_df['FRUIT_NAME'].tolist(),  # Convert column to a list for multiselect
         max_selections=5
     )
 
-    # Step 4: Fetch nutrition information from the API
-    if ingredients_list:
+except Exception as e:
+    st.error("An error occurred while displaying the ingredient selection.")
+    st.exception(e)
+    st.stop()
+
+# Step 3: Fetch and display nutrition information from the Fruityvice API
+if ingredients_list:
+    try:
         for fruit_chosen in ingredients_list:
+            # Get the corresponding SEARCH_ON value
             search_on = pd_df.loc[pd_df['FRUIT_NAME'] == fruit_chosen, 'SEARCH_ON'].iloc[0]
 
+            # Display the fruit name and fetch its nutrition information
             st.subheader(f"{fruit_chosen} Nutrition Information")
+            
+            # Fetch data from the Fruityvice API
             fruityvice_response = requests.get(f"https://fruityvice.com/api/fruit/{search_on}")
-
+            
+            # Handle API response
             if fruityvice_response.status_code == 200:
                 nutrition_data = fruityvice_response.json()
-                st.json(nutrition_data)
+                st.json(nutrition_data)  # Display the JSON data in Streamlit
             else:
                 st.error(f"Failed to fetch data for {fruit_chosen}. Response code: {fruityvice_response.status_code}")
 
-except Exception as e:
-    st.error("An error occurred while processing ingredients or fetching API data.")
-    st.exception(e)
-    st.stop()
+    except Exception as e:
+        st.error("An error occurred while fetching or displaying nutrition information.")
+        st.exception(e)
