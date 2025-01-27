@@ -14,7 +14,21 @@ st.write(
 cnx = st.connection("snowflake")
 session = cnx.session()
 
-my_dataframe = session.table("smoothies.public.fruit_options").select(col('FRUIT_NAME')).collect()
+# my_dataframe = session.table("smoothies.public.fruit_options").select(col('FRUIT_NAME')).collect()
+my_dataframe = session.table("smoothies.public.fruit_options").select(col('FRUIT_NAME'), col('SEARCH_ON'))
+st.dataframe(data=my_dataframe, use_container_width=True)
+st.stop()
+
+# Convert the snowpark dataframe to pandas dataframe so we can use LOC function
+pd_df = my_dataframe.to_pandas()
+st.dataframe(pd_df)
+st.stop()
+
+# Streamlit multiselect for up to 5 ingredients
+ingredients_list = st.multiselect(
+    'Choose up to 5 ingredients:',
+    fruit_names
+)
 
 # Convert the Snowflake DataFrame to a list of fruit names
 fruit_names = [row['FRUIT_NAME'] for row in my_dataframe]
@@ -23,11 +37,11 @@ fruit_names = [row['FRUIT_NAME'] for row in my_dataframe]
 name_on_order = st.text_input("Enter your name for the order:")
 st.write("The name on your Smoothie will be ", name_on_order)
 
-# Streamlit multiselect for up to 5 ingredients
-ingredients_list = st.multiselect(
-    'Choose up to 5 ingredients:',
-    fruit_names
-)
+# # Streamlit multiselect for up to 5 ingredients
+# ingredients_list = st.multiselect(
+#     'Choose up to 5 ingredients:',
+#     fruit_names
+# )
 
 if ingredients_list and name_on_order:
     # Create a single string of selected ingredients
@@ -47,7 +61,6 @@ if ingredients_list and name_on_order:
         st.success(f"Your Smoothie is ordered, {name_on_order}", icon="✅")
 
 # New section to display smoothiefroot nutrition information
-
 if ingredients_list:
     ingredients_string = ''
 
