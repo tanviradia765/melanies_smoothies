@@ -14,9 +14,16 @@ st.write(
 cnx = st.connection("snowflake")
 session = cnx.session()
 
-my_dataframe = session.table("smoothies.public.fruit_options").select(col('FRUIT_NAME')).collect()
+my_dataframe = session.table("smoothies.public.fruit_options").select(col('FRUIT_NAME'), col('SEARCH_ON'))
+# st.dataframe(data=my_dataframe, use_container_width=True)
+# st.stop()
 
-# Convert the Snowflake DataFrame to a list of fruit names
+# Convert the Snowpark Dataframe to a Pandas Dataframe so we can use the LOC function
+pd_df = my_dataframe.to_pandas()
+st.dataframe(pd_df)
+st.stop()
+
+# Convert the Snowpark DataFrame to a list of fruit names
 fruit_names = [row['FRUIT_NAME'] for row in my_dataframe]
 
 # Streamlit text input for the user's name on the order
