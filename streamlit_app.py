@@ -35,13 +35,6 @@ ingredients_list = st.multiselect(
     , max_selections=5
 )
 
-if ingredients_list and name_on_order:
-    # Create a single string of selected ingredients
-    ingredients_string = ' '.join(ingredients_list)
-
-    # Button for submitting the order
-    time_to_insert = st.button('Submit Order', key="submit_order_button")
-
 if ingredients_list:
     ingredients_string = ''
 
@@ -57,3 +50,11 @@ if ingredients_list:
         
         smoothiefroot_response = requests.get("https://my.smoothiefroot.com/api/fruit/" + fruit_chosen)
         sf_df = st.dataframe(data=smoothiefroot_response.json(), use_container_width=True)
+
+if ingredients_list and name_on_order:
+    # Create a single string of selected ingredients
+    ingredients_string = ' '.join(ingredients_list)
+
+    # Button for submitting the order
+    time_to_insert = st.button('Submit Order', key="submit_order_button")
+
