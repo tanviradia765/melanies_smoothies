@@ -48,8 +48,8 @@ if ingredients_list:
         fruityvice_response = requests.get("https://fruityvice.com/api/fruit/"+ search_on)
         fv_df = st.dataframe(data=fruityvice_response.json(), use_container_width=True)
         
-        smoothiefroot_response = requests.get("https://my.smoothiefroot.com/api/fruit/" + fruit_chosen)
-        sf_df = st.dataframe(data=smoothiefroot_response.json(), use_container_width=True)
+        # smoothiefroot_response = requests.get("https://my.smoothiefroot.com/api/fruit/" + fruit_chosen)
+        # sf_df = st.dataframe(data=smoothiefroot_response.json(), use_container_width=True)
 
 if ingredients_list and name_on_order:
     # Create a single string of selected ingredients
