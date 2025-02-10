@@ -35,6 +35,13 @@ ingredients_list = st.multiselect(
     , max_selections=5
 )
 
+if ingredients_list and name_on_order:
+    # Create a single string of selected ingredients
+    ingredients_string = ' '.join(ingredients_list)
+
+    # Button for submitting the order
+    time_to_insert = st.button('Submit Order', key="submit_order_button")
+
 if ingredients_list:
     ingredients_string = ''
 
